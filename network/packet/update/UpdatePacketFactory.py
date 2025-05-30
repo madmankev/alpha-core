@@ -1,7 +1,11 @@
 import time
 from struct import pack
+from typing import Optional
+
+from bitarray import bitarray
 
 from network.packet.PacketWriter import PacketWriter
+from network.packet.update.UpdateData import UpdateData
 from network.packet.update.UpdateMask import UpdateMask
 from utils.Logger import Logger
 from utils.constants.OpCodes import OpCode
@@ -80,7 +84,7 @@ class UpdatePacketFactory(object):
         if not self._validate_field_existence(index):
             return False
 
-        if FIELDS_ENCAPSULATION[self.fields_type][index] == EncapsulationType.PRIVATE and requester.guid != self.owner_guid:
+        if requester.guid != self.owner_guid and FIELDS_ENCAPSULATION[self.fields_type][index] == EncapsulationType.PRIVATE:
             # self._debug_field_acquisition(requester, index, was_protected=True)
             return False
 
@@ -102,6 +106,14 @@ class UpdatePacketFactory(object):
         result = {'[PROTECTED]' if was_protected else '[ACCESSED]'}
         Logger.debug(f"{requester.get_name()} - [{update_field_info}] - {result}, Value [{self.update_values[index]}]")
 
+    # Makes sure every single player gets the same mask and values.
+    def generate_update_data(self, flush_current=True):
+        with self.update_mask.lock:
+            update_object = UpdateData(self.update_mask.copy(), self.update_values_bytes.copy())
+            if flush_current:
+                self.update_mask.clear()
+            return update_object
+
     def reset(self):
         self.update_mask.clear()
 
@@ -109,16 +121,17 @@ class UpdatePacketFactory(object):
         return not self.update_mask.is_empty()
 
     def reset_older_than(self, timestamp_to_compare):
-        all_clear = True
-        for index, timestamp in enumerate(self.update_timestamps):
-            if not timestamp:
-                continue
-            if timestamp <= timestamp_to_compare:
-                self.update_mask.unset_bit(index)
-            else:
-                all_clear = False
+        with self.update_mask.lock:
+            all_clear = True
+            for index, timestamp in enumerate(self.update_timestamps):
+                if not timestamp:
+                    continue
+                if timestamp <= timestamp_to_compare:
+                    self.update_mask.unset_bit(index)
+                else:
+                    all_clear = False
 
-        return all_clear
+            return all_clear
 
     # Check if the new value is different from the field known value.
     def should_update(self, index, value, value_type):
@@ -138,12 +151,3 @@ class UpdatePacketFactory(object):
             self.update_values[index] = value
             self.update_values_bytes[index] = pack(f'<{value_type}', value)
             self.update_mask.set_bit(index)
-
-    @staticmethod
-    def compress_if_needed(update_packet):
-        if len(update_packet) > 100:
-            compressed_packet_data = PacketWriter.deflate(update_packet[6:])
-            compressed_data = pack('<I', len(update_packet) - 6)
-            compressed_data += compressed_packet_data
-            update_packet = PacketWriter.get_packet(OpCode.SMSG_COMPRESSED_UPDATE_OBJECT, compressed_data)
-        return update_packet

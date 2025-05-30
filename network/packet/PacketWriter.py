@@ -1,7 +1,8 @@
 import zlib
 from struct import pack
 
-from utils.constants.OpCodes import *
+from utils.Logger import Logger
+from utils.constants.OpCodes import OpCode
 
 
 class PacketWriter(object):
@@ -9,10 +10,19 @@ class PacketWriter(object):
     HEADER_SIZE = 6
 
     @staticmethod
-    def string_to_bytes(value):
+    def string_to_bytes(value, encoding='latin1'):
         if value is None:
             value = ''
-        return value.encode('latin1') + b'\x00'
+
+        try:
+            return value.encode(encoding) + b'\x00'
+        except UnicodeEncodeError:
+            Logger.error(f'Error when trying to encode the following string: {value}')
+            return b'\x00'
+
+    @staticmethod
+    def get_srp6_packet(data=b''):
+        return pack('>H', len(data)) + data
 
     @staticmethod
     def get_packet(opcode, data=b''):
@@ -20,8 +30,12 @@ class PacketWriter(object):
             data = b''
 
         data = pack('<I', opcode) + data
-        return pack('>H', len(data)) + data
+        packet = pack('>H', len(data)) + data
 
-    @staticmethod
-    def deflate(data):
-        return zlib.compress(data)
+        if opcode == OpCode.SMSG_UPDATE_OBJECT and len(packet) > 100:
+            compressed_packet_data = zlib.compress(packet[6:])
+            compressed_data = pack('<I', len(packet) - 6)
+            compressed_data += compressed_packet_data
+            packet = PacketWriter.get_packet(OpCode.SMSG_COMPRESSED_UPDATE_OBJECT, compressed_data)
+
+        return packet
