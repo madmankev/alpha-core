@@ -4,5 +4,5 @@ class EnvironmentalVariables:
 
     ACTIVE_ENV_VARS = [
         FORWARD_ADDRESS_OVERRIDE,
-        CONSOLE_MODE
+        CONSOLE_MODE,
     ]

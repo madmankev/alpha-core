@@ -27,6 +27,13 @@ class Distances:
 class CreatureFormulas:
 
     @staticmethod
+    def calculate_min_max_damage(damage, damage_multiplier, damage_variance):
+        damage_average = damage * damage_multiplier
+        damage_variance = damage_average * damage_variance
+
+        return int(damage_average - damage_variance), round(damage_average + damage_variance)
+
+    @staticmethod
     def xp_reward(creature_level, player_level, is_elite=False):
         if player_level >= 60:
             return 0
@@ -54,25 +61,17 @@ class UnitFormulas(object):
     def get_reach_for_weapon(item_template):
         # The weapon reach unit field was removed in patch 0.10.
         # We use swing reach for now.
-        item_info = DbcDatabaseManager.item_get_subclass_info_by_class_and_subclass(item_template.class_, item_template.subclass)
+        item_info = DbcDatabaseManager.item_get_subclass_info_by_class_and_subclass(item_template.class_,
+                                                                                    item_template.subclass)
         if item_info:
             return item_info.WeaponSwingSize
         return 0
 
-    @staticmethod
-    def calculate_max_health_and_max_power(creature_mgr, level):
-        c_template = creature_mgr.creature_template
-        rel_level = 0
-        if c_template.level_max != c_template.level_min:
-            rel_level = ((level - c_template.level_min) / (c_template.level_max - c_template.level_min))
-        max_health = c_template.health_min + int(rel_level * (c_template.health_max - c_template.health_min))
-        max_power1 = c_template.mana_min + int(rel_level * (c_template.mana_max - c_template.mana_min))
-        return max_health, max_power1
-
     # Taken from the 0.5.3 client
     @staticmethod
     def interactable_distance(attacker, target):
-        return (attacker.weapon_reach + attacker.combat_reach + target.weapon_reach + target.combat_reach + 1.3333334) * 1.05 * 0.89999998
+        return ((attacker.weapon_reach + attacker.combat_reach + target.weapon_reach + target.combat_reach + 1.3333334)
+                * 1.05 * 0.89999998)
 
     @staticmethod
     def combat_distance(attacker, target):
@@ -225,3 +224,16 @@ class PlayerFormulas:
             return math.ceil(rew_xp * 0.2)
         else:
             return math.ceil(rew_xp * 0.1)
+
+    # Guesses based on Vanilla observations.
+    @staticmethod
+    def group_xp_rate(group_count):
+        if group_count < 3:
+            return 1.0
+        if group_count == 3:
+            return 1.166
+        if group_count == 4:
+            return 1.3
+        if group_count == 5:
+            return 1.4
+        return max(1 - (group_count * 0.05), 0.01)

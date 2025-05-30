@@ -14,6 +14,7 @@ class DebugColorLevel(Enum):
     WARNING = Fore.YELLOW + Style.BRIGHT
     ERROR = Fore.RED + Style.BRIGHT
     DEBUG = Fore.CYAN + Style.BRIGHT
+    SCRIPT = Fore.MAGENTA + Style.BRIGHT
 
 
 class DebugLevel(IntEnum):
@@ -24,6 +25,7 @@ class DebugLevel(IntEnum):
     WARNING = 0x08
     ERROR = 0x10
     DEBUG = 0x20
+    SCRIPT = 0x40
 
 
 class Logger:
@@ -69,13 +71,18 @@ class Logger:
         if Logger._should_log(DebugLevel.ANTICHEAT):
             print(Logger._colorize_message('[ANTICHEAT]', DebugColorLevel.ANTICHEAT, msg))
 
+    @staticmethod
+    def script(msg):
+        if Logger._should_log(DebugLevel.SCRIPT):
+            print(Logger._colorize_message('[SCRIPT]', DebugColorLevel.SCRIPT, msg))
+
     # Additional methods
 
     @staticmethod
     def progress(msg, current, total, divisions=20):
         msg = f'{msg} [{current}/{total}] ({int(current * 100 / total)}%)'
         if current != total and divisions > 0:
-            if int(current % (total / divisions)) == 0:
+            if divisions == 1 or int(current % (total / divisions)) == 0:
                 Logger.info(msg, end='\r')
         else:
             Logger.success(msg)

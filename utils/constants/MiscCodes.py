@@ -55,6 +55,11 @@ class UpdateTypes(IntEnum):
 
 # Some might be unused on Alpha
 class HighGuid(IntEnum):
+
+    @classmethod
+    def has_value(cls, value):
+        return value in cls._value2member_map_
+
     HIGHGUID_PLAYER = 0x0000 << 48
     HIGHGUID_ITEM = 0x4000 << 48
     HIGHGUID_CONTAINER = 0x4000 << 48
@@ -531,6 +536,71 @@ class Emotes(IntEnum):
     SMILE = 163
 
 
+class EmoteUnitState(IntEnum):
+    NONE = 0
+    TALK = 1
+    BOW = 2
+    CURTSEY = 2
+    BYE = 3
+    GREET = 3
+    HAIL = 3
+    HELLO = 3
+    WAVE = 3
+    WELCOME = 3
+    CHEER = 4
+    VICTORY = 4
+    GASP = 5
+    TALKEX = 5
+    TALKQ = 5
+    CONFUSED = 6
+    CURIOUS = 6
+    SHRUG = 6
+    BOGGLE = 6
+    LOST = 6
+    PONDER = 6
+    PUZZLE = 6
+    DRINK = 7
+    EAT = 7
+    DANCE = 10
+    CACKLE = 11
+    CHUCKLE = 11
+    GIGGLE = 11
+    GLOAT = 11
+    GUFFAW = 11
+    LAUGH = 11
+    ROFL = 11
+    LAYDOWN = 12
+    SLEEP = 12
+    SIT = 13
+    ANGRY = 14
+    RUDE = 14
+    INSULT = 14
+    ROAR = 15
+    PRAY = 16
+    KISS = 17
+    CRY = 18
+    MOURN = 18
+    VIOLIN = 18
+    CHICKEN = 19
+    TAUNT = 19
+    BEG = 20
+    GROVEL = 20
+    PLEAD = 20
+    SURRENDER = 20
+    APPLAUD = 21
+    CLAP = 21
+    CONGRATULATE = 21
+    SHOUT = 22
+    FLEX = 23
+    BASHFUL = 24
+    BLUSH = 24
+    SHY = 24
+    POINT = 25
+    STAND = 26
+    SALUTE = 66
+    KNEEL = 68
+
+
 class ChatMsgs(IntEnum):
     CHAT_MSG_SAY = 0x00
     CHAT_MSG_PARTY = 0x01
@@ -592,6 +662,12 @@ class CreatureGroupFlags(IntEnum):
     OPTION_INFORM_MEMBERS_ON_ANY_DIED = 0x080
 
 
+class MapTileStates(IntEnum):
+    READY = 0
+    LOADING = 1
+    UNUSABLE = 2
+
+
 class MoveType(IntEnum):
     INSTANT = 0x0
     IDLE = 0x1
@@ -603,7 +679,8 @@ class MoveType(IntEnum):
     FEAR = 0x7
     DISTRACTED = 0x8
     GROUP = 0x9
-    PET = 0x10
+    PET = 0xA
+    CONFUSED = 0xB
 
 
 class MoveFlags(IntEnum):
@@ -946,6 +1023,7 @@ class ScriptTypes(IntEnum):
     SCRIPT_TYPE_GOSSIP = 6
     SCRIPT_TYPE_SPELL = 7
     SCRIPT_TYPE_AI = 8
+    SCRIPT_TYPE_EVENT_SCRIPT = 9
 
 
 class TeleportToOptions(IntEnum):
@@ -955,6 +1033,57 @@ class TeleportToOptions(IntEnum):
     TELE_TO_NOT_UNSUMMON_PET = 0x08
     TELE_TO_SPELL = 0x10
     TELE_TO_FORCE_MAP_CHANGE = 0x20
+
+
+# VMaNGOS MotionTypes.
+class MotionTypes(IntEnum):
+    IDLE_MOTION_TYPE = 0  # IdleMovementGenerator.h
+    RANDOM_MOTION_TYPE = 1  # RandomMovementGenerator.h
+    WAYPOINT_MOTION_TYPE = 2  # WaypointMovementGenerator.h
+    MAX_DB_MOTION_TYPE = 3  # *** this and below motion types can't be set in DB.
+
+    CONFUSED_MOTION_TYPE = 4  # ConfusedMovementGenerator.h
+    CHASE_MOTION_TYPE = 5  # TargetedMovementGenerator.h
+    HOME_MOTION_TYPE = 6  # HomeMovementGenerator.h
+    FLIGHT_MOTION_TYPE = 7  # WaypointMovementGenerator.h
+    POINT_MOTION_TYPE = 8  # PointMovementGenerator.h
+    FLEEING_MOTION_TYPE = 9  # FleeingMovementGenerator.h
+    DISTRACT_MOTION_TYPE = 10  # IdleMovementGenerator.h
+    ASSISTANCE_MOTION_TYPE = 11  # PointMovementGenerator.h (first part of flee for assistance)
+    ASSISTANCE_DISTRACT_MOTION_TYPE = 12  # IdleMovementGenerator.h (second part of flee for assistance)
+    TIMED_FLEEING_MOTION_TYPE = 13  # FleeingMovementGenerator.h (alt.second part of flee for assistance)
+    FOLLOW_MOTION_TYPE = 14  # TargetedMovementGenerator.h
+    EFFECT_MOTION_TYPE = 15
+    PATROL_MOTION_TYPE = 16
+    CHARGE_MOTION_TYPE = 17
+    DISTANCING_MOTION_TYPE = 18
+
+
+class UnitInLosReaction(IntEnum):
+    ULR_ANY = 0
+    ULR_HOSTILE = 1
+    ULR_NON_HOSTILE = 2
+
+
+class PoolType(IntEnum):
+    CREATURE = 0
+    GAMEOBJECT = 1
+
+
+class MapsNoNavs(IntEnum):
+
+    @classmethod
+    def has_value(cls, value):
+        return value in cls._value2member_map_
+
+    UnderMine = 2
+    Test = 13
+    ScottTest = 25
+    Test2 = 29
+    PVPZone1 = 30
+    PVPZone2 = 37
+    Collin = 42
+    SunkenTemple = 109
 
 
 class CreatureAIEventTypes(IntEnum):
@@ -994,12 +1123,35 @@ class CreatureAIEventTypes(IntEnum):
     #     EVENT_T_GROUP_MEMBER_DIED       = 32,                   // Param1 = CreatureId, Param2 = IsLeader
     #     EVENT_T_VICTIM_ROOTED           = 33,                   // RepeatMin, RepeatMax
 
+    AI_EVENT_TYPE_TIMER_IN_COMBAT = 0
     AI_EVENT_TYPE_OUT_OF_COMBAT = 1
     AI_EVENT_TYPE_HP = 2
+    AI_EVENT_TYPE_MANA = 3
     AI_EVENT_TYPE_ON_ENTER_COMBAT = 4
+    AI_EVENT_TYPE_ON_KILL_UNIT = 5
     AI_EVENT_TYPE_ON_DEATH = 6
+    AI_EVENT_TYPE_ON_EVADE = 7
+    AI_EVENT_TYPE_SPELL_HIT = 8
+    AI_EVENT_TYPE_RANGE = 9
+    AI_EVENT_TYPE_OOC_LOS = 10
     AI_EVENT_TYPE_ON_SPAWN = 11
+    AI_EVENT_TYPE_TARGET_HP = 12
+    AI_EVENT_TYPE_TARGET_CASTING = 13
+    AI_EVENT_TYPE_FRIENDLY_HP = 14
+    AI_EVENT_TYPE_FRIENDLY_MISSING_BUFF = 16
+    AI_EVENT_TYPE_SUMMONED_UNIT = 17
+    AI_EVENT_TYPE_TARGET_MANA = 18
+    AI_EVENT_TYPE_QUEST_ACCEPT = 19
+    AI_EVENT_TYPE_QUEST_COMPLETE = 20
+    AI_EVENT_TYPE_REACHED_HOME = 21
     AI_EVENT_TYPE_RECEIVE_EMOTE = 22
+    AI_EVENT_TYPE_TARGET_AURA = 24
+    AI_EVENT_TYPE_MISSING_AURA = 27
+    AI_EVENT_TYPE_TARGET_MISSING_AURA = 28
+    # AI_EVENT_TYPE_MOVEMENT_INFORM = 29
+    AI_EVENT_TYPE_LEAVE_COMBAT = 30
+    AI_EVENT_TYPE_GROUP_MEMBER_DIED = 32
+    AI_EVENT_TYPE_TARGET_ROOTED = 33
 
 
 class BroadcastMessageType(IntEnum):

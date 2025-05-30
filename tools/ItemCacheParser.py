@@ -20,6 +20,9 @@ class ItemCacheParser:
                         version = unpack('<i', wdb.read(4))[0]
                         record_count = unpack('<i', wdb.read(4))[0]  # Does not match real count.
                         wdb.read(4)  # Record version.
+                        # TODO: The WDB we have for this version is altered and bugged, ignore for automatic parsing.
+                        if version == 3734:
+                            continue
 
                         if version not in cached_results:
                             cached_results[version] = []
@@ -135,7 +138,8 @@ class ItemCacheParser:
                                 index += 12  # Unknown fields.
 
                             index, max_count = ItemCacheParser._read_int(data, index)
-                            if ItemCacheParser._should_update(max_count, item_template.max_count):
+                            # Don't update max_count for rings. See https://github.com/The-Alpha-Project/alpha-core/pull/1345
+                            if inventory_type != 11 and ItemCacheParser._should_update(max_count, item_template.max_count):
                                 sql_field_comment.append(f"-- max_count, from {item_template.max_count} to {max_count}")
                                 sql_field_updates.append(f"`max_count` = {max_count}")
 
@@ -150,36 +154,36 @@ class ItemCacheParser:
                                 sql_field_comment.append(f"-- container_slots, from {item_template.container_slots} to {container_slots}")
                                 sql_field_updates.append(f"`container_slots` = {container_slots}")
 
-                            for y in range(10):
+                            for y in range(1, 11):
                                 index, stat_type = ItemCacheParser._read_int(data, index)
-                                current_stat_type = eval(f'item_template.stat_type{y + 1}')
+                                current_stat_type = getattr(item_template, f'stat_type{y}')
                                 index, stat_value = ItemCacheParser._read_int(data, index)
-                                current_stat_value = eval(f'item_template.stat_value{y + 1}')
+                                current_stat_value = getattr(item_template, f'stat_value{y}')
                                 if ItemCacheParser._should_update(stat_type, current_stat_type):
-                                    sql_field_comment.append(f"-- stat_type{y + 1}, from {current} to {stat_type}")
-                                    sql_field_updates.append(f"`stat_type{y + 1}` = {stat_type}")
+                                    sql_field_comment.append(f"-- stat_type{y}, from {current_stat_type} to {stat_type}")
+                                    sql_field_updates.append(f"`stat_type{y}` = {stat_type}")
                                 if ItemCacheParser._should_update(current_stat_value, stat_value):
-                                    sql_field_comment.append(f"-- stat_value{y + 1}, from {current} to {stat_value}")
-                                    sql_field_updates.append(f"`stat_value{y + 1}` = {stat_value}")
+                                    sql_field_comment.append(f"-- stat_value{y}, from {current_stat_value} to {stat_value}")
+                                    sql_field_updates.append(f"`stat_value{y}` = {stat_value}")
 
-                            for y in range(5):
+                            for y in range(1, 6):
                                 index, dmg_min = ItemCacheParser._read_int(data, index) if version < 3925 \
                                     else ItemCacheParser._read_float(data, index)
-                                current_min = eval(f'item_template.dmg_min{y + 1}')
+                                current_min = getattr(item_template, f'dmg_min{y}')
                                 index, dmg_max = ItemCacheParser._read_int(data, index) if version < 3925 \
                                     else ItemCacheParser._read_float(data, index)
-                                current_max = eval(f'item_template.dmg_max{y + 1}')
+                                current_max = getattr(item_template, f'dmg_max{y}')
                                 index, dmg_type = ItemCacheParser._read_int(data, index)
-                                current_dmg_type = eval(f' item_template.dmg_type{y + 1}')
+                                current_dmg_type = getattr(item_template, f'dmg_type{y}')
                                 if ItemCacheParser._should_update(dmg_min, current_min):
-                                    sql_field_comment.append(f"-- dmg_min{y + 1}, from {current_min} to {dmg_min}")
-                                    sql_field_updates.append(f"`dmg_min{y + 1}` = {dmg_min}")
+                                    sql_field_comment.append(f"-- dmg_min{y}, from {current_min} to {dmg_min}")
+                                    sql_field_updates.append(f"`dmg_min{y}` = {dmg_min}")
                                 if ItemCacheParser._should_update(dmg_max, current_max):
-                                    sql_field_comment.append(f"-- dmg_max{y + 1}, from {current_max} to {dmg_max}")
-                                    sql_field_updates.append(f"`dmg_max{y + 1}` = {dmg_max}")
+                                    sql_field_comment.append(f"-- dmg_max{y}, from {current_max} to {dmg_max}")
+                                    sql_field_updates.append(f"`dmg_max{y}` = {dmg_max}")
                                 if ItemCacheParser._should_update(dmg_type, current_dmg_type):
-                                    sql_field_comment.append(f"-- dmg_type{y + 1}, from {current_dmg_type} to {dmg_type}")
-                                    sql_field_updates.append(f"`dmg_type{y + 1}` = {dmg_type}")
+                                    sql_field_comment.append(f"-- dmg_type{y}, from {current_dmg_type} to {dmg_type}")
+                                    sql_field_updates.append(f"`dmg_type{y}` = {dmg_type}")
 
                             index, physical_armor = ItemCacheParser._read_int(data, index)
                             if ItemCacheParser._should_update(physical_armor, item_template.armor):
@@ -192,7 +196,7 @@ class ItemCacheParser:
 
                             for y in range(range_version_based):
                                 index, resistance = ItemCacheParser._read_int(data, index)
-                                current = eval(f' item_template.{resistances[y]}')
+                                current = getattr(item_template, f'{resistances[y]}')
                                 if ItemCacheParser._should_update(resistance, current):
                                     sql_field_comment.append(f"-- {resistances[y]}, from {current} to {resistance}")
                                     sql_field_updates.append(f"`{resistances[y]}` = {resistance}")
@@ -213,52 +217,54 @@ class ItemCacheParser:
                                     sql_field_comment.append(f"-- max_durability, from {item_template.max_durability} to {max_durability}")
                                     sql_field_updates.append(f"`max_durability` = {max_durability}")
 
-                            for y in range(5):
+                            for y in range(1, 6):
                                 index, spellid = ItemCacheParser._read_int(data, index)
-                                current_spellid = eval(f' item_template.spellid_{y + 1}')
+                                current_spellid = getattr(item_template, f'spellid_{y}')
 
                                 index, spelltrigger = ItemCacheParser._read_int(data, index)
-                                current_spelltrigger = eval(f' item_template.spelltrigger_{y + 1}')
+                                current_spelltrigger = getattr(item_template, f'spelltrigger_{y}')
 
                                 index, spellcharges = ItemCacheParser._read_int(data, index)
-                                current_spellcharges = eval(f' item_template.spellcharges_{y + 1}')
+                                current_spellcharges = getattr(item_template, f'spellcharges_{y}')
 
                                 index, spellcooldown = ItemCacheParser._read_int(data, index)
-                                current_spellcooldown = eval(f' item_template.spellcooldown_{y + 1}')
+                                current_spellcooldown = getattr(item_template, f'spellcooldown_{y}')
 
                                 index, spellcategory = ItemCacheParser._read_int(data, index)
-                                current_spellcategory = eval(f' item_template.spellcategory_{y + 1}')
+                                current_spellcategory = getattr(item_template, f'spellcategory_{y}')
 
                                 index, spellcategorycooldown = ItemCacheParser._read_int(data, index)
-                                current_spellcategorycooldown = eval(f' item_template.spellcategorycooldown_{y + 1}')
+                                current_spellcategorycooldown = getattr(item_template, f'spellcategorycooldown_{y}')
 
                                 should_update = ItemCacheParser._should_update(spellid, current_spellid)
                                 should_update = should_update and (spellid <= 7913 or (current_spellid > 7913 and spellid > 7913))
                                 if not should_update:
                                     continue
 
-                                sql_field_comment.append(f"-- spellid_{y + 1}, from {current_spellid} to {spellid}")
-                                sql_field_updates.append(f"`spellid_{y + 1}` = {spellid}")
+                                sql_field_comment.append(f"-- spellid_{y}, from {current_spellid} to {spellid}")
+                                sql_field_updates.append(f"`spellid_{y}` = {spellid}")
                                 if ItemCacheParser._should_update(spelltrigger, current_spelltrigger):
-                                    sql_field_comment.append(f"-- spelltrigger_{y + 1}, from {current_spelltrigger} to {spelltrigger}")
-                                    sql_field_updates.append(f"`spelltrigger_{y + 1}` = {spelltrigger}")
+                                    sql_field_comment.append(f"-- spelltrigger_{y}, from {current_spelltrigger} to {spelltrigger}")
+                                    sql_field_updates.append(f"`spelltrigger_{y}` = {spelltrigger}")
                                 if ItemCacheParser._should_update(spellcharges, current_spellcharges):
-                                    sql_field_comment.append(f"-- spellcharges_{y + 1}, from {current_spellcharges} to {spellcharges}")
-                                    sql_field_updates.append(f"`spellcharges_{y + 1}` = {spellcharges}")
+                                    sql_field_comment.append(f"-- spellcharges_{y}, from {current_spellcharges} to {spellcharges}")
+                                    sql_field_updates.append(f"`spellcharges_{y}` = {spellcharges}")
                                 if ItemCacheParser._should_update(spellcooldown, current_spellcooldown):
-                                    sql_field_comment.append(f"-- spellcooldown_{y + 1}, from {current_spellcooldown} to {spellcooldown}")
-                                    sql_field_updates.append(f"`spellcooldown_{y + 1}` = {spellcooldown}")
+                                    sql_field_comment.append(f"-- spellcooldown_{y}, from {current_spellcooldown} to {spellcooldown}")
+                                    sql_field_updates.append(f"`spellcooldown_{y}` = {spellcooldown}")
                                 if ItemCacheParser._should_update(spellcategory, current_spellcategory):
-                                    sql_field_comment.append(f"-- spellcategory_{y + 1}, from {current_spellcategory} to {spellcategory}")
-                                    sql_field_updates.append(f"`spellcategory_{y + 1}` = {spellcategory}")
+                                    sql_field_comment.append(f"-- spellcategory_{y}, from {current_spellcategory} to {spellcategory}")
+                                    sql_field_updates.append(f"`spellcategory_{y}` = {spellcategory}")
                                 if ItemCacheParser._should_update(spellcategorycooldown, current_spellcategorycooldown):
-                                    sql_field_comment.append(f"-- spellcategorycooldown_{y + 1}, from {current_spellcategorycooldown} to {spellcategorycooldown}")
-                                    sql_field_updates.append(f"`spellcategorycooldown_{y + 1}` = {spellcategorycooldown}")
+                                    sql_field_comment.append(f"-- spellcategorycooldown_{y}, from {current_spellcategorycooldown} to {spellcategorycooldown}")
+                                    sql_field_updates.append(f"`spellcategorycooldown_{y}` = {spellcategorycooldown}")
 
+                            # Don't update bonding manually as it worked quite differently in 0.5.3.
+                            # See https://github.com/The-Alpha-Project/alpha-core/pull/1345
                             index, bonding = ItemCacheParser._read_int(data, index)
-                            if ItemCacheParser._should_update(bonding, item_template.bonding):
-                                sql_field_comment.append(f"-- bonding, from {item_template.bonding} to {bonding}")
-                                sql_field_updates.append(f"`bonding` = {bonding}")
+                            #if ItemCacheParser._should_update(bonding, item_template.bonding):
+                                #sql_field_comment.append(f"-- bonding, from {item_template.bonding} to {bonding}")
+                                #sql_field_updates.append(f"`bonding` = {bonding}")
 
                             index, description = ItemCacheParser._read_string(data, index)
                             if ItemCacheParser._should_update(description, item_template.description) and len(description) > 0:
@@ -338,7 +344,7 @@ class ItemCacheParser:
 
         if len(cached_results) > 0:
             for version, update_lines in cached_results.items():
-                print(f'-- \n{version}\n')
+                print(f'-- {version}\n')
                 for line in update_lines:
                     print(line)
 
@@ -358,4 +364,4 @@ class ItemCacheParser:
 
     @staticmethod
     def _should_update(new, old):
-        return new != -1 and new != 0 and old != -1 and old != 0 and new != old
+        return new != -1 and old != -1 and new != old

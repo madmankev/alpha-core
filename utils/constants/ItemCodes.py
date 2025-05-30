@@ -210,7 +210,9 @@ class InventorySlots(IntEnum):
     SLOT_BANK_BAG_4 = 66
     SLOT_BANK_BAG_5 = 67
     SLOT_BANK_BAG_6 = 68
-    SLOT_BANK_END = 69
+
+    SLOT_BANK_END = 68
+    PLAYER_INVENTORY_SLOTS = 69
 
 
 class InventoryStats(IntEnum):
@@ -331,10 +333,17 @@ class EnchantmentSlots(IntEnum):
     OPTIONAL_ENCHANTMENT_1 = 3
     OPTIONAL_ENCHANTMENT_2 = 4
 
+
 class LootState(IntEnum):
     ITEM_LOOT_NONE = 0
     ITEM_LOOT_TEMPORARY = 1
-    ITEM_LOOT_UNCHANGED = 2,
-    ITEM_LOOT_CHANGED = 3,
-    ITEM_LOOT_NEW = 4,
+    ITEM_LOOT_UNCHANGED = 2
+    ITEM_LOOT_CHANGED = 3
+    ITEM_LOOT_NEW = 4
     ITEM_LOOT_REMOVED = 5
+
+
+class ItemSpellTriggerType(IntEnum):
+    ITEM_SPELL_TRIGGER_ON_USE = 0
+    ITEM_SPELL_TRIGGER_ON_EQUIP = 1
+    ITEM_SPELL_TRIGGER_CHANCE_ON_HIT = 2
